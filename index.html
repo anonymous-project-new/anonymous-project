@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EditDistill</title>
+  <meta name="description" content="EditDistill: Is It Possible to Guide Video Editing with Detailed Image Editing? NeurIPS 2026.">
+  <link rel="icon" href="icon.ico">
+
+  <!-- Bulma CSS -->
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="./static/css_more/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- JS -->
+  <script src="./static/css_more/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+
+  <style>
+    /* ===== Design Tokens ===== */
+    :root {
+      --primary-color: #5B6CF7;
+      --primary-light: #8B9CFF;
+      --primary-dark: #3A4BD4;
+      --accent-color: #FF6B6B;
+      --bg-light: #f7f8fc;
+      --bg-section: #ffffff;
+      --text-primary: #1a202c;
+      --text-secondary: #4a5568;
+      --text-muted: #718096;
+      --border-color: #e8ecf1;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+      --shadow-lg: 0 12px 48px rgba(0,0,0,0.1);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 60px;
+    }
+
+    body {
+      font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-light);
+      color: var(--text-primary);
+      line-height: 1.7;
+    }
+
+    /* ===== Sticky Navigation ===== */
+    .sticky-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transform: translateY(-100%);
+      transition: transform 0.3s ease;
+    }
+    .sticky-nav.visible {
+      transform: translateY(0);
+    }
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+    }
+    .nav-logo {
+      font-family: 'Google Sans', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+    .nav-links {
+      display: flex;
+      gap: 0.2rem;
+    }
+    .nav-links a {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      transition: all var(--transition);
+    }
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--primary-color);
+      background: rgba(91,108,247,0.08);
+    }
+
+    /* ===== Hero / Title Section ===== */
+    .hero-section {
+      background: linear-gradient(135deg, #4a5fe0 0%, #7c3aed 50%, #a855f7 100%);
+      padding: 4.5rem 1.5rem 3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: -60%;
+      left: -30%;
+      width: 160%;
+      height: 200%;
+      background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .hero-section::after {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      right: -20%;
+      width: 80%;
+      height: 80%;
+      background: radial-gradient(ellipse at 80% 80%, rgba(168,85,247,0.3) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .paper-title {
+      font-family: 'Google Sans', 'Noto Sans', sans-serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .paper-subtitle {
+      font-size: 1.2rem;
+      color: rgba(255,255,255,0.88);
+      max-width: 780px;
+      margin: 0 auto 1.8rem;
+      font-weight: 400;
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .author-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.3rem 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+    .author-list .author {
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.95);
+      font-weight: 500;
+    }
+    .author-list .author sup {
+      font-size: 0.65em;
+      margin-left: 1px;
+    }
+
+    .affiliation-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.3rem 1.8rem;
+      margin-bottom: 1rem;
+    }
+    .affiliation-list span {
+      font-size: 0.92rem;
+      color: rgba(255,255,255,0.7);
+    }
+    .affiliation-list span sup {
+      font-size: 0.7em;
+      margin-right: 2px;
+    }
+
+    .venue-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 24px;
+      padding: 0.3rem 1.2rem;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.95);
+      font-weight: 600;
+      margin-bottom: 1.4rem;
+      backdrop-filter: blur(4px);
+      letter-spacing: 0.5px;
+    }
+
+    /* Link buttons */
+    .link-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.3rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all var(--transition);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(4px);
+    }
+    .link-btn:hover {
+      background: rgba(255,255,255,0.28);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    .link-btn img {
+      width: 18px;
+      height: 18px;
+      filter: brightness(10);
+    }
+    .link-btn .fas, .link-btn .ai {
+      font-size: 1.15em;
+    }
+
+    /* ===== Main Content ===== */
+    .main-content {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem 2rem;
+    }
+
+    /* Section cards */
+    .content-section {
+      background: var(--bg-section);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 2.5rem 2.5rem;
+      margin-top: 2rem;
+      border: 1px solid var(--border-color);
+      animation: fadeInUp 0.5s ease both;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section-title {
+      font-family: 'Google Sans', 'Noto Sans', sans-serif;
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1.2rem;
+      text-align: center;
+      position: relative;
+    }
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 48px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+      border-radius: 2px;
+      margin: 0.6rem auto 0;
+    }
+
+    .abstract-text {
+      font-size: 1rem;
+      line-height: 1.85;
+      color: var(--text-secondary);
+      text-align: justify;
+      hyphens: auto;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Teaser image */
+    .teaser-wrapper {
+      max-width: 1100px;
+      margin: -2rem auto 0;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 10;
+    }
+    .teaser-card {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+    .teaser-card img {
+      width: 100%;
+      display: block;
+    }
+
+    /* Overview / Pipeline image */
+    .pipeline-img {
+      width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ===== Video Grid ===== */
+    .subsection-title {
+      font-family: 'Google Sans', 'Noto Sans', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 2rem 0 1rem;
+      padding-left: 0.85rem;
+      border-left: 3px solid var(--primary-color);
+      line-height: 1.4;
+    }
+
+    .video-grid {
+      display: flex;
+      gap: 0.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .video-grid .video-cell {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .video-cell {
+      position: relative;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: #0a0a0a;
+      box-shadow: var(--shadow-sm);
+      transition: all var(--transition);
+    }
+    .video-cell:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .video-cell video {
+      width: 100%;
+      display: block;
+    }
+    .video-cell img {
+      width: 100%;
+      display: block;
+    }
+
+    /* Video caption overlay */
+    .video-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 4px 8px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 500;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition);
+      line-height: 1.3;
+    }
+    .video-cell:hover .video-caption {
+      opacity: 1;
+    }
+
+    /* Row labels */
+    .row-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      margin-top: 1.2rem;
+    }
+    .row-label:first-child {
+      margin-top: 0;
+    }
+    .row-label .tag-badge {
+      display: inline-block;
+      padding: 0.2rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .tag-source {
+      background: #eef2ff;
+      color: #4338ca;
+    }
+    .tag-edited {
+      background: #ecfdf5;
+      color: #047857;
+    }
+    .tag-edit-ref {
+      background: #fef9c3;
+      color: #92400e;
+    }
+
+    /* ===== Comparison Section ===== */
+    .compare-block {
+      background: var(--bg-light);
+      border-radius: var(--radius-md);
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+    }
+    .compare-block-header {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    .compare-exemplar {
+      width: 100px;
+      min-width: 100px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      border: 2px solid #e2e8f0;
+    }
+    .compare-exemplar img {
+      width: 100%;
+      display: block;
+    }
+    .compare-exemplar-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #92400e;
+      background: #fef9c3;
+      text-align: center;
+      padding: 2px 0;
+    }
+    .compare-desc {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Source row */
+    .compare-source-row {
+      margin-bottom: 0.8rem;
+    }
+    .compare-source-row .compare-row-label {
+      color: #4338ca;
+    }
+    .compare-source-cell {
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      max-width: 260px;
+      border: 2px solid #c7d2fe;
+    }
+    .compare-source-cell video {
+      width: 100%;
+      display: block;
+    }
+
+    /* Method results grid */
+    .compare-methods-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.7rem;
+    }
+    .compare-method-card {
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      transition: all var(--transition);
+    }
+    .compare-method-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .compare-method-card.is-ours {
+      border: 2px solid var(--primary-color);
+      box-shadow: 0 0 0 1px rgba(91,108,247,0.15), var(--shadow-sm);
+    }
+    .compare-method-card.is-ours:hover {
+      box-shadow: 0 0 0 1px rgba(91,108,247,0.25), var(--shadow-md);
+    }
+    .compare-method-card video {
+      width: 100%;
+      display: block;
+    }
+    .compare-method-label {
+      text-align: center;
+      padding: 0.35rem 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: #fafbfc;
+      border-top: 1px solid var(--border-color);
+      letter-spacing: 0.2px;
+    }
+    .compare-method-card.is-ours .compare-method-label {
+      color: var(--primary-color);
+      background: rgba(91,108,247,0.05);
+      font-weight: 700;
+    }
+
+    /* Flex variant: cards sized by video aspect ratio, equal height */
+    .compare-methods-flex {
+      display: flex;
+      gap: 0.7rem;
+    }
+    .compare-methods-flex .compare-method-card {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .compare-methods-flex .compare-method-card.aspect-square {
+      flex: 0.5625 1 0;  /* 9/16 ≈ 0.5625, so 1:1 takes proportionally less width */
+    }
+
+    /* Row label in compare */
+    .compare-row-label {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Divider line between video groups */
+    .section-divider {
+      border: none;
+      border-top: 1px dashed var(--border-color);
+      margin: 2rem 0;
+    }
+
+    /* ===== BibTeX Section ===== */
+    .bibtex-section {
+      margin-top: 2rem;
+    }
+    .bibtex-block {
+      position: relative;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border-radius: var(--radius-md);
+      padding: 1.2rem 1.5rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .bibtex-block .kw { color: #89b4fa; }
+    .bibtex-block .str { color: #a6e3a1; }
+    .copy-btn {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.6rem;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #cdd6f4;
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .copy-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* ===== Footer ===== */
+    .site-footer {
+      text-align: center;
+      padding: 2.5rem 1rem 2rem;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      margin-top: 1rem;
+    }
+    .site-footer a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .paper-title { font-size: 1.8rem; }
+      .paper-subtitle { font-size: 1rem; }
+      .hero-section { padding: 3rem 1rem 2rem; }
+      .content-section { padding: 1.5rem 1.2rem; }
+      .video-grid { flex-wrap: wrap; }
+      .video-grid .video-cell { flex: 1 1 45% !important; }
+      .nav-links { display: none; }
+      .compare-methods-grid { grid-template-columns: repeat(2, 1fr); }
+      .compare-methods-flex { flex-wrap: wrap; }
+      .compare-methods-flex .compare-method-card { flex: 1 1 45% !important; }
+      .compare-methods-flex .compare-method-card.aspect-square { flex: 1 1 45% !important; }
+      .compare-block { padding: 0.8rem; }
+      .compare-exemplar { width: 80px; min-width: 80px; }
+    }
+
+    @media (max-width: 480px) {
+      .paper-title { font-size: 1.5rem; }
+      .link-btn { font-size: 0.82rem; padding: 0.5rem 1rem; }
+      .video-grid .video-cell { flex: 1 1 100% !important; }
+      .compare-methods-grid { grid-template-columns: 1fr; }
+      .compare-methods-flex .compare-method-card { flex: 1 1 100% !important; }
+      .compare-methods-flex .compare-method-card.aspect-square { flex: 1 1 100% !important; }
+      .compare-block-header { flex-direction: column; align-items: flex-start; }
+      .compare-source-cell { max-width: 100%; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ==================== Sticky Navigation ==================== -->
+<nav class="sticky-nav" id="stickyNav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">EditDistill</a>
+    <div class="nav-links">
+      <a href="#abstract">Abstract</a>
+      <a href="#overview">Overview</a>
+      <a href="#results">Results</a>
+      <a href="#comparison">Comparison</a>
+      <a href="#bibtex">BibTeX</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ==================== Hero Section ==================== -->
+<section class="hero-section" id="hero">
+  <div class="hero-content">
+    <h1 class="paper-title">EditDistill</h1>
+    <p class="paper-subtitle">
+      Is It Possible to Guide Video Editing with Image Editing?
+    </p>
+
+    <div class="author-list">
+      <span class="author">Anonymous Author(s)</span>
+    </div>
+
+    <div class="venue-badge">NeurIPS 2026 Submission (Under Review)</div>
+
+    <div class="link-buttons">
+      <a class="link-btn" href="#abstract">
+        <i class="fas fa-file-alt"></i> Paper
+      </a>
+      <a class="link-btn" href="#">
+        <i class="fas fa-code"></i> Code (Coming soon)
+      </a>
+      <a class="link-btn" href="#">
+        <i class="fas fa-database"></i> Data (Coming soon)
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Teaser Image ==================== -->
+<div class="teaser-wrapper">
+  <div class="teaser-card">
+    <img src="imgs/teaser.png" alt="Teaser figure showing exemplar-driven video editing results">
+  </div>
+</div>
+
+<!-- ==================== Main Content ==================== -->
+<div class="main-content">
+
+  <!-- Abstract -->
+  <section class="content-section" id="abstract">
+    <h2 class="section-title">Abstract</h2>
+    <p class="abstract-text">
+      We study exemplar-driven video editing: given an image pair that demonstrates a visual transformation and a source video depicting a related subject, generate an edited video that preserves temporal dynamics while transferring the demonstrated change. We present <strong>EditDistill</strong>, a two-stage framework that first distills the edit shown by the image pair into a compact latent delta and then injects that delta into a pre-trained video diffusion transformer built on Wan2.1-I2V-14B. The first stage learns an edit representation by reconstructing the target image from the source image and an inferred latent change code. The second stage uses lightweight injection modules to condition selected transformer blocks on that code, enabling controllable video-to-video editing without full backbone retraining. This decomposition separates edit specification from temporal rendering, supports reusing the same edit delta across multiple videos, and exposes explicit control over edit strength and injection strategy. We further define an evaluation protocol that measures edit fidelity, temporal consistency, controllability, and efficiency, thereby turning exemplar-based video editing into a concrete and reproducible empirical problem.
+    </p>
+  </section>
+
+  <!-- Overview / Pipeline -->
+  <section class="content-section" id="overview">
+    <h2 class="section-title">Overview</h2>
+    <img class="pipeline-img" src="imgs/method.png" alt="Method pipeline overview">
+  </section>
+
+  <!-- ==================== Visualization Results ==================== -->
+  <section class="content-section" id="results">
+    <h2 class="section-title">Visualization Results</h2>
+
+    <!-- ===== Different Types of Video Editing ===== -->
+    <h3 class="subsection-title">Different Types of Building Dressing</h3>
+
+    <div class="row-label"><span class="tag-badge tag-source">Source</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/215300_medium-rongrong_20260424_094743_215300_medium_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/219337_tiny_rongrong_20260424_104140_219337_tiny_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/219337_tiny_rongrong_20260424_104301_219339_tiny_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/215303_medium-rongrong_20260424_103852_215303_medium_raw.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+    <div class="row-label"><span class="tag-badge tag-edited">Edited</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/215300_medium-rongrong_20260424_094743_215300_medium_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/219337_tiny_rongrong_20260424_104140_219337_tiny_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/219337_tiny_rongrong_20260424_104301_219339_tiny_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/215303_medium-rongrong_20260424_103852_215303_medium_generate.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ===== Various Season Editing ===== -->
+    <h3 class="subsection-title">Various Season Editing</h3>
+
+    <div class="row-label">
+      <span class="tag-badge tag-source">Source</span>
+      <span class="tag-badge tag-edited">Edited &times;2</span>
+    </div>
+
+    <!-- Row 1 -->
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/2ab43e50-a92c-4880-9033-dc9a263017a6_20260428_143611_261423_tiny_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/2ab43e50-a92c-4880-9033-dc9a263017a6_20260428_143611_261423_tiny_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 1</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/d7084e19-fe0a-4bbb-946f-efb7559c1424_20260428_143729_261423_tiny_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 2</div>
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="video-grid" style="margin-top:0.8rem;">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/97191c61-8e47-4c0a-8208-a8df418a08b3_20260428_082236_158074-816074941_medium_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/97191c61-8e47-4c0a-8208-a8df418a08b3_20260428_082236_158074-816074941_medium_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 1</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/f1701c93-382a-4aa9-b3fb-49f0f3b65f6b_20260428_074813_158074-816074941_medium_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 2</div>
+      </div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="video-grid" style="margin-top:0.8rem;">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/butterfly_rain_20260424_071303_345137_tiny_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/butterfly_rain_20260424_071303_345137_tiny_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 1</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/butterfly_20260424_071240_345137_tiny_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 2</div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ===== Various Object Editing ===== -->
+    <h3 class="subsection-title">Various Object Editing</h3>
+
+    <div class="row-label">
+      <span class="tag-badge tag-source">Source</span>
+      <span class="tag-badge tag-edit-ref">Edit Exemplar</span>
+      <span class="tag-badge tag-edited">Edited</span>
+    </div>
+
+    <!-- Object Row 1 -->
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/11d5676d-8564-44c9-83f6-956416a48781_20260428_141128_335314_medium_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <img src="imgs/20260429215428826.png" alt="Edit exemplar">
+        <div class="video-caption">Exemplar</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/11d5676d-8564-44c9-83f6-956416a48781_20260428_141128_335314_medium_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edited</div>
+      </div>
+      <div class="video-cell">
+        <img src="imgs/20260429215538901.png" alt="Edit exemplar">
+        <div class="video-caption">Exemplar</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/d5bf6392-bbdb-4fe2-ba11-1d1ea85b0c84_20260428_141240_335314_medium_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edited</div>
+      </div>
+    </div>
+
+    <!-- Object Row 2 -->
+    <div class="video-grid" style="margin-top:0.8rem;">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/liebao_cloth_20260424_060234_53486-473869656_medium_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <img src="imgs/fdb7b426-412d-4ef2-980a-489619c8d93c.png" alt="Edit exemplar">
+        <div class="video-caption">Exemplar</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/liebao_cloth_20260424_060234_53486-473869656_medium_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edited</div>
+      </div>
+      <div class="video-cell">
+        <img src="imgs/2f995cd5-7ee8-4924-b068-a1469711bfbe.png" alt="Edit exemplar">
+        <div class="video-caption">Exemplar</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/inliebao_glass_20260424_055720_53486-473869656_medium.mp4_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edited</div>
+      </div>
+    </div>
+
+    <!-- Object Row 3 -->
+    <div class="video-grid" style="margin-top:0.8rem;">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/e9e5a33f-0e11-47d2-83d9-3d0f97f4d4e7_20260428_151643_180699-864967760_small_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <img src="imgs/8befd48d-e0c0-4aa3-89a7-1f6ab23166af.png" alt="Edit exemplar">
+        <div class="video-caption">Exemplar</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/e9e5a33f-0e11-47d2-83d9-3d0f97f4d4e7_20260428_151643_180699-864967760_small_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edited</div>
+      </div>
+      <div class="video-cell">
+        <img src="imgs/b106bac3-a178-4ebb-a622-c06c5238c8b5.png" alt="Edit exemplar">
+        <div class="video-caption">Exemplar</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/ours_2/73d3b5f6-a735-4edc-99f3-430442e3c708_20260428_151707_180699-864967760_small_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edited</div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ===== Editing Compare ===== -->
+    <h3 class="subsection-title" id="comparison">Editing Comparison</h3>
+
+    <!-- Compare Case 1: Elephant -->
+    <div class="compare-block">
+      <div class="compare-block-header">
+        <div class="compare-exemplar">
+          <img src="imgs/20260505124501090.png" alt="Edit exemplar">
+          <div class="compare-exemplar-label">Edit Exemplar</div>
+        </div>
+        <div>
+          <div class="compare-row-label">Source Video</div>
+          <div class="compare-source-cell">
+            <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/elephant/elephant_raw.mp4" type="video/mp4"></video>
+          </div>
+        </div>
+      </div>
+      <div class="compare-row-label">Method Results</div>
+      <div class="compare-methods-grid">
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/elephant/omni-video.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">Omni-Video</div>
+        </div>
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/elephant/hunyuancustom.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">HunyuanCustom</div>
+        </div>
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/elephant/vace.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">VACE</div>
+        </div>
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/elephant/rf_editor.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">RF-Editor</div>
+        </div>
+        <div class="compare-method-card is-ours">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/elephant/elephant_our.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">Ours (EditDistill)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare Case 2: Horse -->
+    <div class="compare-block">
+      <div class="compare-block-header">
+        <div class="compare-exemplar">
+          <img src="imgs/20260505162124906.png" alt="Edit exemplar">
+          <div class="compare-exemplar-label">Edit Exemplar</div>
+        </div>
+        <div>
+          <div class="compare-row-label">Source Video</div>
+          <div class="compare-source-cell">
+            <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/horse/horse_raw.mp4" type="video/mp4"></video>
+          </div>
+        </div>
+      </div>
+      <div class="compare-row-label">Method Results</div>
+      <div class="compare-methods-grid">
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/horse/horse_omni_video.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">Omni-Video</div>
+        </div>
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/horse/horse_hunyuancus.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">HunyuanCustom</div>
+        </div>
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/horse/out_video_horse_vace.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">VACE</div>
+        </div>
+        <div class="compare-method-card">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/horse/horse_rf_editor.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">RF-Editor</div>
+        </div>
+        <div class="compare-method-card is-ours">
+          <video muted controls autoplay loop playsinline><source src="paper_videos/edit_compare/horse/horse_ours.mp4" type="video/mp4"></video>
+          <div class="compare-method-label">Ours (EditDistill)</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+
+
+
+
+    <!-- ===== Video Relight Comparison ===== -->
+    <h3 class="subsection-title" id="relight-comparison">Video Relight Comparison</h3>
+
+    <!-- Relight Case 1: Girl -->
+    <div class="compare-methods-flex">
+      <div class="compare-method-card">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/traffic_raw.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">Source</div>
+      </div>
+      <div class="compare-method-card">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/light_a_video_traffic.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">Light-A-Video</div>
+      </div>
+      <div class="compare-method-card">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/tclight-traffic.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">TC-Light</div>
+      </div>
+      <div class="compare-method-card is-ours">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/traffic_ours.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">Ours (EditDistill)</div>
+      </div>
+    </div>
+
+    <!-- Relight Case 2: Tiger -->
+    <div class="compare-methods-flex" style="margin-top: 0.8rem;">
+      <div class="compare-method-card">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/mountain_raw.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">Source</div>
+      </div>
+      <div class="compare-method-card">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/light_a_video_mountain.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">Light-A-Video</div>
+      </div>
+      <div class="compare-method-card">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/tclightoutput_mountain.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">TC-Light</div>
+      </div>
+      <div class="compare-method-card is-ours">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight_edit/mountain_ours.mp4" type="video/mp4"></video>
+        <div class="compare-method-label">Ours (EditDistill)</div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- ===== Various Subject Editing ===== -->
+    <h3 class="subsection-title">Various Subject Editing</h3>
+
+    <div class="row-label"><span class="tag-badge tag-source">Source</span> <span class="tag-badge tag-edited">Edited &times;3</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/tiger/6bbfb437-e660-42aa-8b1b-14e0c4b449e3_20260429_062014_129992-746164384_small_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/tiger/6bbfb437-e660-42aa-8b1b-14e0c4b449e3_20260429_062014_129992-746164384_small_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 1</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/tiger/391e5199-8f95-412c-a1ad-748a514cc351_20260429_090108_129992-746164384_small_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 2</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/tiger/27672186-3ebf-431b-929b-760722119191_20260429_084100_129992-746164384_small_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 3</div>
+      </div>
+    </div>
+
+    <div class="video-grid" style="margin-top:0.8rem;">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human/a0e4b4d9-c6f6-402f-95d9-0494c3f8172b_20260429_102552_-QJlhHC7pBI_16_0to434_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human/a0e4b4d9-c6f6-402f-95d9-0494c3f8172b_20260429_102552_-QJlhHC7pBI_16_0to434_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 1</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human/75f9f8a7-3417-4d1d-8817-7b2ce7284e5f_20260429_102758_-QJlhHC7pBI_16_0to434_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 2</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human/2ee317b7-0959-44d4-b58a-c8d70bc55ae6_20260429_102706_-QJlhHC7pBI_16_0to434_generate.mp4" type="video/mp4"></video>
+        <div class="video-caption">Edit 3</div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+
+
+    <!-- ===== Various Scene Editing ===== -->
+    <h3 class="subsection-title">Various Scene Editing</h3>
+
+    <div class="row-label"><span class="tag-badge tag-source">Source</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene1_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene2_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene3_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene4_raw.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+    <div class="row-label"><span class="tag-badge tag-edited">Edited</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene1_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene2_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene3_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/scene_edit/scene4_generate.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ===== Various Human Light Animation ===== -->
+    <h3 class="subsection-title">Various Human Light Animation</h3>
+
+    <div class="row-label"><span class="tag-badge tag-source">Source</span> <span class="tag-badge tag-edited">Edited &times;3</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human1_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human1_1.mp4" type="video/mp4"></video>
+        <div class="video-caption">Light 1</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human1_2.mp4" type="video/mp4"></video>
+        <div class="video-caption">Light 2</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human1_3.mp4" type="video/mp4"></video>
+        <div class="video-caption">Light 3</div>
+      </div>
+    </div>
+
+    <div class="video-grid" style="margin-top:0.8rem;">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human2_raw.mp4" type="video/mp4"></video>
+        <div class="video-caption">Source</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human2_1.mp4" type="video/mp4"></video>
+        <div class="video-caption">Light 1</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human2_2.mp4" type="video/mp4"></video>
+        <div class="video-caption">Light 2</div>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/human_light_animation/human2_3.mp4" type="video/mp4"></video>
+        <div class="video-caption">Light 3</div>
+      </div>
+    </div>
+
+
+
+
+
+    <hr class="section-divider">
+
+    <!-- ===== Various Environment Light Editing ===== -->
+    <h3 class="subsection-title">Various types of Light Editing</h3>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/one_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/one_night_rain.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/one_light.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/one_snow.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/two_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/two_rain.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/two_night.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/four_raw.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/three_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/three_rain.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/three_snow.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/auto_traffic/foure_rain.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+
+
+
+
+
+
+
+
+
+    <hr class="section-divider">
+
+    <!-- ===== Various Environment Light Editing ===== -->
+    <h3 class="subsection-title">Various Environment Light Editing</h3>
+
+    <div class="row-label"><span class="tag-badge tag-source">Source</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/horse_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/two_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/three_raw.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/four_raw.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+    <div class="row-label"><span class="tag-badge tag-edited">Edited</span></div>
+    <div class="video-grid">
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/horse_light.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/two_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/three_generate.mp4" type="video/mp4"></video>
+      </div>
+      <div class="video-cell">
+        <video muted controls autoplay loop playsinline><source src="paper_videos/video_relight/four_generate.mp4" type="video/mp4"></video>
+      </div>
+    </div>
+
+  </section>
+
+
+
+
+</div>
+
+<!-- ==================== Footer ==================== -->
+
+<script>
+  // ===== Sticky Nav: show after scrolling past hero =====
+  (function() {
+    var nav = document.getElementById('stickyNav');
+    var hero = document.getElementById('hero');
+    var navLinks = nav.querySelectorAll('.nav-links a');
+    var sections = [];
+
+    // Collect sections for active highlighting
+    navLinks.forEach(function(link) {
+      var href = link.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        var sec = document.getElementById(href.slice(1));
+        if (sec) sections.push({ el: sec, link: link });
+      }
+    });
+
+    function onScroll() {
+      // Show / hide nav
+      var heroBottom = hero.getBoundingClientRect().bottom;
+      if (heroBottom < 0) {
+        nav.classList.add('visible');
+      } else {
+        nav.classList.remove('visible');
+      }
+
+      // Highlight active section
+      var scrollPos = window.scrollY + 100;
+      sections.forEach(function(s) {
+        s.link.classList.remove('active');
+      });
+      for (var i = sections.length - 1; i >= 0; i--) {
+        if (sections[i].el.offsetTop <= scrollPos) {
+          sections[i].link.classList.add('active');
+          break;
+        }
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // ===== Video Intersection Observer: play/pause on visibility =====
+  document.addEventListener('DOMContentLoaded', function() {
+    var videos = document.querySelectorAll('video');
+
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.play().catch(function() {});
+          } else {
+            entry.target.pause();
+          }
+        });
+      }, { threshold: 0.2 });
+
+      videos.forEach(function(video) {
+        observer.observe(video);
+      });
+    }
+  });
+
+  // ===== Scroll-triggered fade-in animation =====
+  document.addEventListener('DOMContentLoaded', function() {
+    var sections = document.querySelectorAll('.content-section');
+    if ('IntersectionObserver' in window) {
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.style.animationPlayState = 'running';
+            obs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.05 });
+
+      sections.forEach(function(sec) {
+        sec.style.animationPlayState = 'paused';
+        obs.observe(sec);
+      });
+    }
+  });
+
+  // ===== Auto aspect-ratio flex sizing =====
+  document.addEventListener('DOMContentLoaded', function() {
+    // For .video-grid cells
+    document.querySelectorAll('.video-grid .video-cell').forEach(function(cell) {
+      var video = cell.querySelector('video');
+      var img = cell.querySelector('img');
+      if (video) {
+        if (video.videoWidth && video.videoHeight) {
+          cell.style.flex = (video.videoWidth / video.videoHeight) + ' 1 0px';
+        } else {
+          video.addEventListener('loadedmetadata', function() {
+            if (video.videoWidth && video.videoHeight) {
+              cell.style.flex = (video.videoWidth / video.videoHeight) + ' 1 0px';
+            }
+          });
+        }
+      } else if (img) {
+        if (img.naturalWidth && img.naturalHeight) {
+          cell.style.flex = (img.naturalWidth / img.naturalHeight) + ' 1 0px';
+        } else {
+          img.addEventListener('load', function() {
+            if (img.naturalWidth && img.naturalHeight) {
+              cell.style.flex = (img.naturalWidth / img.naturalHeight) + ' 1 0px';
+            }
+          });
+        }
+      }
+    });
+
+    // For .compare-methods-flex cards (relight comparison etc.)
+    document.querySelectorAll('.compare-methods-flex .compare-method-card').forEach(function(card) {
+      var video = card.querySelector('video');
+      if (video) {
+        if (video.videoWidth && video.videoHeight) {
+          card.style.flex = (video.videoWidth / video.videoHeight) + ' 1 0px';
+        } else {
+          video.addEventListener('loadedmetadata', function() {
+            if (video.videoWidth && video.videoHeight) {
+              card.style.flex = (video.videoWidth / video.videoHeight) + ' 1 0px';
+            }
+          });
+        }
+      }
+    });
+  });
+
+  // ===== Copy BibTeX =====
+  function copyBibtex() {
+    var text = document.getElementById('bibtexContent').innerText;
+    navigator.clipboard.writeText(text).then(function() {
+      var btn = document.querySelector('.copy-btn');
+      btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      setTimeout(function() {
+        btn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+      }, 2000);
+    });
+  }
+</script>
+
+</body>
+</html>
